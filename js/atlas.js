@@ -15,14 +15,14 @@
     pt: {
       tech:['LiDAR Aéreo','LiDAR Terrestre','Multiespectral','Hiperespectral'], model:'modelo', models:'modelos', preparing:'Modelos em preparação', soon:'Em breve',
       thumbnail:'Miniatura indisponível', explore:'Explorar em 3D', onmap:'Ver no mapa', closeMenu:'Fechar menu', openMenu:'Abrir menu',
-      fullscreen:'Abrir visualizador em ecrã inteiro', exitFullscreen:'Sair do ecrã inteiro', pause:'Pausar animação', resume:'Retomar animação',
+      fullscreen:'Abrir visualizador em ecrã inteiro', exitFullscreen:'Sair do ecrã inteiro', maximize:'Expandir visualizador', restore:'Repor tamanho do visualizador', fullscreenBlocked:'O browser não permitiu o ecrã inteiro. O visualizador foi expandido na página.', pause:'Pausar animação', resume:'Retomar animação',
       copied:'Ligação copiada.', copyFailed:'Seleciona e copia o endereço da página para partilhar esta vista.',
       theme:{geochemistry:'Geoquímica',mining:'Mineração e geologia',landscape:'Paisagem e ambiente',terrain:'Território e classificação',heritage:'Património e arquitetura'}
     },
     en: {
       tech:['Airborne LiDAR','Terrestrial LiDAR','Multispectral','Hyperspectral'], model:'model', models:'models', preparing:'Models in preparation', soon:'Coming soon',
       thumbnail:'Preview unavailable', explore:'Explore in 3D', onmap:'Show on map', closeMenu:'Close menu', openMenu:'Open menu',
-      fullscreen:'Open viewer in fullscreen', exitFullscreen:'Exit fullscreen', pause:'Pause animation', resume:'Resume animation',
+      fullscreen:'Open viewer in fullscreen', exitFullscreen:'Exit fullscreen', maximize:'Expand viewer', restore:'Restore viewer size', fullscreenBlocked:'The browser did not allow fullscreen. The viewer has been expanded within the page.', pause:'Pause animation', resume:'Resume animation',
       copied:'Link copied.', copyFailed:'Select and copy the page address to share this view.',
       theme:{geochemistry:'Geochemistry',mining:'Mining and geology',landscape:'Landscape and environment',terrain:'Terrain and classification',heritage:'Heritage and architecture'}
     }
@@ -94,7 +94,7 @@
   let toastTimer;
   function toast(message) {
     const el=$('#toast');if(!el)return;
-    if(dialog?.open)dialog.append(el);else document.body.append(el);
+    if(dialog?.open)($('#viewer-shell')||dialog).append(el);else document.body.append(el);
     clearTimeout(toastTimer);el.textContent=message;el.hidden=false;toastTimer=setTimeout(()=>el.hidden=true,3300);
   }
   async function copyURL(url = window.location.href) {
@@ -103,8 +103,10 @@
   function images(parent=document) {
     $$('img',parent).forEach(img=>{
       if (img.dataset.errorBound) return;img.dataset.errorBound='true';
-      const failed=()=>{if(!img.naturalWidth)img.hidden=true;};
-      img.addEventListener('error',failed);if(img.complete)failed();
+      const fallback=img.parentElement?.querySelector('.thumb-fallback');
+      const loaded=()=>{const available=img.naturalWidth>0;img.hidden=!available;if(fallback)fallback.hidden=available;};
+      const failed=()=>{img.hidden=true;if(fallback)fallback.hidden=false;};
+      img.addEventListener('load',loaded);img.addEventListener('error',failed);if(img.complete)loaded();
     });
   }
   function cardHTML(model,index) {
@@ -150,12 +152,28 @@
   });
   if(dialog){
     $('#viewer-close').addEventListener('click',()=>dialog.close());
-    dialog.addEventListener('close',()=>{++generation;clearTimeout(loadTimeout);mount.replaceChildren();document.body.classList.remove('viewer-open');const notice=$('#toast');if(notice?.parentElement===dialog)document.body.append(notice);if(document.fullscreenElement===dialog&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});patchURL(page==='catalog'?{viewer:null,model:null}:{viewer:null});if(opener?.isConnected)opener.focus({preventScroll:true});});
+    dialog.addEventListener('close',()=>{if(viewerIsFullscreen()&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});++generation;clearTimeout(loadTimeout);mount.replaceChildren();document.body.classList.remove('viewer-open');dialog.classList.remove('is-maximized');const notice=$('#toast');if(notice&&dialog.contains(notice))document.body.append(notice);syncFullscreen();patchURL(page==='catalog'?{viewer:null,model:null}:{viewer:null});if(opener?.isConnected)opener.focus({preventScroll:true});});
     dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const b=dialog.getBoundingClientRect();if(event.clientX<b.left||event.clientX>b.right||event.clientY<b.top||event.clientY>b.bottom)dialog.close();});
     $('#viewer-prev').addEventListener('click',()=>showModel(viewerIndex-1));$('#viewer-next').addEventListener('click',()=>showModel(viewerIndex+1));$('#viewer-copy').addEventListener('click',()=>copyURL());
-    const fullscreen=$('#viewer-fullscreen');if(!document.fullscreenEnabled||!dialog.requestFullscreen)fullscreen.hidden=true;
-    fullscreen.addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await dialog.requestFullscreen();}catch(_){}});
-    document.addEventListener('fullscreenchange',()=>fullscreen.setAttribute('aria-label',document.fullscreenElement?T.exitFullscreen:T.fullscreen));
+    const fullscreen=$('#viewer-fullscreen'),viewerShell=$('#viewer-shell');
+    const supportsFullscreen=Boolean(document.fullscreenEnabled&&viewerShell?.requestFullscreen);
+    function viewerIsFullscreen(){return Boolean(document.fullscreenElement&&dialog.contains(document.fullscreenElement));}
+    function syncFullscreen(){
+      const full=viewerIsFullscreen(),expanded=dialog.classList.contains('is-maximized');
+      const label=full?T.exitFullscreen:expanded?T.restore:supportsFullscreen?T.fullscreen:T.maximize;
+      fullscreen.setAttribute('aria-label',label);fullscreen.setAttribute('title',label);fullscreen.setAttribute('aria-pressed',String(full||expanded));
+    }
+    fullscreen.hidden=false;syncFullscreen();
+    fullscreen.addEventListener('click',async()=>{
+      if(dialog.classList.contains('is-maximized')){dialog.classList.remove('is-maximized');syncFullscreen();return;}
+      if(!supportsFullscreen){dialog.classList.add('is-maximized');syncFullscreen();return;}
+      try {
+        if(viewerIsFullscreen())await document.exitFullscreen();
+        else {await viewerShell.requestFullscreen();if(!dialog.open&&viewerIsFullscreen())await document.exitFullscreen();}
+      } catch (_) {if(dialog.open){dialog.classList.add('is-maximized');toast(T.fullscreenBlocked);}}
+      syncFullscreen();
+    });
+    document.addEventListener('fullscreenchange',syncFullscreen);
   }
   document.addEventListener('keydown',event=>{
     const editing=event.target.closest('input,textarea,select,[contenteditable="true"]');
