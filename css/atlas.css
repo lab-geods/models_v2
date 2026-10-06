@@ -174,10 +174,10 @@
     .card-link { display: block; height: 100%; }
     .card-link:focus-visible { outline-offset: -3px; }
     .card-media { position: relative; aspect-ratio: 16/10; overflow: hidden; background: #0b100d; }
-    .card-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.6,.2,1); }
+    .card-media img { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.6,.2,1); }
     .model-card:hover .card-media img { transform: scale(1.045); }
-    .card-media::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0002, transparent 40%, #0003); pointer-events: none; }
-    .thumb-fallback { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 9px; color: var(--accent); background: radial-gradient(ellipse at var(--fallback-x, 50%) 70%, #bddbc715, transparent 65%), #101712; }
+    .card-media::after { content: ''; position: absolute; z-index: 1; inset: 0; background: linear-gradient(180deg, #0002, transparent 40%, #0003); pointer-events: none; }
+    .thumb-fallback { position: absolute; z-index: 0; inset: 0; display: grid; place-content: center; justify-items: center; gap: 9px; color: var(--accent); pointer-events: none; background: radial-gradient(ellipse at var(--fallback-x, 50%) 70%, #bddbc715, transparent 65%), #101712; }
     .thumb-fallback svg { position: absolute; inset: -15% -5%; width: 110%; height: 130%; opacity: .14; stroke: var(--accent); fill: none; stroke-width: 1; transform: rotate(var(--fallback-angle, 0deg)); }
     .thumb-fallback .icon { position: static; width: 30px; height: 30px; opacity: .6; stroke-width: 1; transform: none; }
     .thumb-fallback span { z-index: 1; color: var(--muted); font: 400 9px var(--mono); letter-spacing: .025em; }
@@ -235,7 +235,10 @@
     .viewer-dialog { padding: 0; width: min(1450px, calc(100% - 48px)); max-width: none; height: min(920px, calc(100dvh - 48px)); max-height: none; background: #101512; color: var(--text); border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
     .viewer-dialog[open] { display: flex; flex-direction: column; }
     .viewer-dialog::backdrop { background: #030704df; -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); }
-    .viewer-dialog:fullscreen { width: 100%; height: 100%; border: 0; border-radius: 0; }
+    .viewer-dialog.is-maximized[open] { width: 100%; height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+    .viewer-shell { display: flex; flex-direction: column; flex: 1; width: 100%; min-height: 0; background: #101512; }
+    .viewer-shell:fullscreen { width: 100%; height: 100%; padding: 0; border: 0; border-radius: 0; }
+    .viewer-head, .viewer-foot { flex-shrink: 0; }
     .viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 17px 21px; border-bottom: 1px solid var(--line); }
     .viewer-head .mono { color: var(--mint); font-size: 9px; margin-bottom: 4px; display: block; }
     .viewer-head h2 { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.4; }
@@ -422,7 +425,7 @@
 .viewer-map-link .icon { width:14px; height:14px; }
 .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:60; width:max-content; max-width:calc(100% - 40px); background:var(--mint); color:var(--bg); border:1px solid #ffffff22; border-radius:6px; padding:12px 20px; font-size:12px; box-shadow:0 8px 30px #0005; text-align:center; }
 /* O diálogo está na top layer; o aviso também é colocado lá quando necessário. */
-.viewer-dialog .toast { z-index:1; }
+.viewer-dialog .toast { z-index:5; }
 
 /* Mapa: área de trabalho com uma lista acessível e detalhes do modelo. */
 .map-layout { display:grid; grid-template-columns:minmax(0,1fr) 385px; height:calc(100dvh - var(--nav-height)); min-height:520px; }
